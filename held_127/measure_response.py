@@ -24,15 +24,10 @@ cal_output = rt.load_cal_output("./cal_pulse_templates.root");
 t = np.linspace(-327.680, 327.680, len(cal_output))
 freqs = rt.freq_calc(len(cal_output), 1.0/ff)
 
-cal_input = rt.load_cal_input("/home/danielsmith/Summer2018/system_response/oct16_final_cleanup/calpulser_input_spectrum.root", freqs)
-test_input = rt.load_test_input("/home/danielsmith/Summer2018/system_response/oct16_final_cleanup/testpulser_input_pulse.root", t);
-test_output = rt.load_test_output("/home/danielsmith/Summer2018/system_response/average_of_test_pulses/system_response/master_pulse_template.root")
 
-cal_output_fft  = np.fft.rfft(cal_output)
-cal_input_fft   = np.fft.rfft(cal_input)
-test_output_fft = np.fft.rfft(test_output)
-test_output_fft = np.append(test_output_fft, np.zeros(len(cal_output_fft) - len(test_output_fft)))
-test_output     = np.fft.irfft(test_output_fft)
+cal_input = np.array(rt.load_cal_input("/home/danielsmith/Summer2018/system_response/oct16_final_cleanup/calpulser_input_spectrum.root", freqs))
+test_input = np.array(rt.load_test_input("/home/danielsmith/Summer2018/system_response/oct16_final_cleanup/testpulser_input_pulse.root", t))
+test_output = np.array(rt.load_test_output("/home/danielsmith/Summer2018/system_response/average_of_test_pulses/system_response/master_pulse_template.root"))
 
 # convert to volts at the digitizer
 test_output *= (6.8 * 1e-3) 
@@ -48,14 +43,14 @@ cal_output  = rt.clean_limits(cal_output, 100.0, 19000.0, 25.0, 200.0)
 test_output = rt.clean_limits(test_output, 100.0, 19000.0, 25.0, 200.0)
 test_input  = rt.clean_limits(test_input, 100.0, 19000.0, 25.0, 200.0)
 
-cal_output_fft  = np.fft.rfft(cal_output) 
+cal_output_fft  = np.fft.rfft(cal_output)
+cal_input_fft   = np.fft.rfft(cal_input)
 test_output_fft = np.fft.rfft(test_output)
-test_input_fft  = np.fft.rfft(test_input)
+test_output_fft = np.append(test_output_fft, np.zeros(len(cal_output_fft) - len(test_output_fft)))
+test_output     = np.fft.irfft(test_output_fft)
 derivative_fft  = (1.0j * freqs) 
+test_input_fft  = np.fft.rfft(test_input)
 test_input_fft  = np.append(test_input_fft, np.zeros(len(test_output_fft) - len(test_input_fft)))
-
-# subtract off att. at cal pulser
-cal_input_fft /= np.power(10.0, 8.0/20.0)
 
 # Subtract off DC components
 cal_output_fft[0]  = 0.0+0.0j
@@ -69,7 +64,7 @@ test_input = np.fft.irfft(test_input_fft)
 sys_fft = [test_output_fft[i] / test_input_fft[i] if test_input_fft[i] != 0.0 else 0.0 for i in range(len(test_input_fft))]
 # add on system ampl
 sys_fft = np.asarray(sys_fft)
-sys_fft *= np.power(10.0, 67.0/20.0) # not 70, due to variable attenuator
+sys_fft *= np.power(10.0, 70.0/20.0) # not 70, due to variable attenuator
 
 # Calculate h_fft
 h_fft = []
@@ -86,7 +81,7 @@ h_fft = rt.fft_sqrt(h_fft, freqs)
 h_fft = rt.smooth(h_fft, freqs, low_f, high_f)
 
 # Scale to match MC
-h_fft /= np.power(10.0, 19.0/20.0)
+h_fft /= np.power(10.0, 16.0/20.0)
 
 # Causal requirement
 h_fft = np.real(h_fft) + 1j * scipy.fftpack.hilbert(np.real(h_fft))

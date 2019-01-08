@@ -182,7 +182,7 @@ def clean_limits(signal, lower, upper, tau_lower, tau_upper):
     return signal;
     
 def align_with_zero(signal): 
-    ''' Finds where 10% of power is, and roughly aligns it with zero ''' 
+    ''' Finds where 2% of power is, and roughly aligns it with zero ''' 
 
     # Get rid of baseline as much as I can
     #signal -= np.average(signal) 
@@ -196,7 +196,7 @@ def align_with_zero(signal):
 
     start_index = 0
     for i in range(len(power)):
-        if(power[i] > 0.02):
+        if(power[i] > 0.1):
             start_index = i
             break
     signal = np.roll(signal, -1 * start_index + int(len(signal) * 0.01))
