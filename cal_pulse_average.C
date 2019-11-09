@@ -27,11 +27,11 @@
 
 void cal_pulse_average(char* path) { 
 
-  bool bVerbose = false;
-  bool bPlot = false;
+  bool bVerbose = true;
+  bool bPlot = true;
   int iMaxNGraphs = 10000;
   int iNChans = 8;
-  float fThreshHold = 45.0;
+  float fThreshHold = 40.0;
   float fBaseline = 63.15569564;
   UInt_t iMinTime = 1516350110;
   UInt_t iMaxTime = 1516352800;
@@ -39,8 +39,8 @@ void cal_pulse_average(char* path) {
   // Histograms
   TH2F* hPtoPvsReadoutTime = new TH2F("hPtoPvsReadoutTime", "hPtoPvsReadoutTime", 200, iMinTime, iMaxTime, 150, 0.0, 150.0);
 
-  //UInt_t min_time_cut = 1516351110;
-  //UInt_t max_time_cut = 1516351800;
+  UInt_t min_time_cut = 1516351110;
+  UInt_t max_time_cut = 1516351800;
 
   // Loading the event file
   std::ostringstream event_string;
@@ -81,6 +81,11 @@ void cal_pulse_average(char* path) {
     // This step could be better, using corrected time instead of readout time, 
     // but works reasonable well. 
     if(double(head->readout_time_ns[0])*1e-9 < 0.99) { continue; }
+
+    // This time cut to select for exactly 8 dB attenuated data
+    if(strcmp(path, "/project2/avieregg/nuphase/telem/root/run437") == 0) {
+      if(int(head->readout_time[0]) < min_time_cut or int(head->readout_time[0]) > max_time_cut) { continue; }	
+    }
 
     // peak-to-peak difference for max and min, pretending like one pulse
     bool bFoundPulse = false;
@@ -132,6 +137,10 @@ void cal_pulse_average(char* path) {
 
     // then average
     gChanAvg[iChan] = FFTtools::correlateAndAverage(iGraphsToAvg, gTempGraph);
+
+    // Then, exterpolate back to original digitizer
+    gChanAvg[iChan] = FFTtools::getInterpolatedGraphFreqDom(gChanAvg[iChan], 1.0);
+
 
     if(bVerbose) { std::cout << "Done with chan" << iChan << std::endl; }
   }
