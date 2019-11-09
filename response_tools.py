@@ -1,3 +1,4 @@
+
 import math
 import cmath
 import numpy as np
@@ -145,15 +146,37 @@ def load_sim(path, plot):
 
 def load_cal_output(path):
     f_cal_output = root.TFile(path)
-    cal_output_graph = f_cal_output.Get("template_0")
+    cal_output_graph = f_cal_output.Get("template_6")
     cal_output = np.asarray([cal_output_graph.GetY()[i] for i in range(cal_output_graph.GetN())])
     return cal_output
 
-def load_cal_input(path, freqs):
+def load_cal_input(path, t):
     f_cal_input = root.TFile(path)
     cal_input_graph = f_cal_input.Get("Graph")
-    cal_input_fft = [np.power(10.0, cal_input_graph.Eval(freqs[i]) / 10.0) for i in range(len(freqs))]
-    return np.fft.irfft(cal_input_fft)
+
+    cal_x = np.array([cal_input_graph.GetY()[i] for i in range(cal_input_graph.GetN())])
+    ft = np.array([cal_input_graph.GetX()[i] for i in range(cal_input_graph.GetN())])
+    cal_x_fft = np.append(np.fft.rfft(cal_x), np.zeros(2**16 - len(cal_x)))
+    cal_x_long = np.fft.irfft(cal_x_fft)
+    cal_x_long *= float(len(cal_x_long)) / float(len(cal_x))
+    ft_long = np.array([i * (ft[1] - ft[0]) / 512.0 for i in range(len(cal_x_long))])
+    #ft_long -= ft_long[-1] / 2.0
+    cal_x_fft_freq = np.fft.rfftfreq(len(cal_x_long), (ft[1] - ft[0]) / 512.0)
+    
+    # So now going to extrapolate to pts
+    long_graph = root.TGraph(len(ft_long))
+    for i in range(len(ft_long)):
+        long_graph.GetX()[i] = ft_long[i]
+        long_graph.GetY()[i] = cal_x_long[i]
+
+    cal_input = np.array([long_graph.Eval(t[i]) for i in range(len(t))])
+    cal_input = [cal_input[i] if range(len(cal_input))[i] > 512.0 and range(len(cal_input))[i] < 517.0 else 0.0 for i in range(len(cal_input))]
+
+    #plt.plot(t, cal_input)
+    #plt.plot(ft, cal_x)
+    #plt.show()
+
+    return cal_input, t
 
 def load_test_input(path, t):
     f_test_input = root.TFile(path);
@@ -196,8 +219,10 @@ def align_with_zero(signal):
 
     start_index = 0
     for i in range(len(power)):
-        if(power[i] > 0.1):
+        if(power[i] > 0.02):
             start_index = i
             break
     signal = np.roll(signal, -1 * start_index + int(len(signal) * 0.01))
+    #signal = np.roll(signal, -1 * start_index + int(len(signal) * 0.02))
+    #signal = np.roll(signal, -1 * start_index)
     return signal
